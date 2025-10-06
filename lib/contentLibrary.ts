@@ -1,3 +1,14 @@
+// lib/contentLibrary.ts
+
+export type Card =
+  | { type: 'stat'; title: string; value: string }
+  | { type: 'kpi'; title: string; value: string; note?: string }
+  | { type: 'list' | 'faq'; title: string; items: string[] }
+  | { type: 'bar' | 'doughnut'; title: string; legend?: { name: string; value: number }[]; palette?: string[] }
+  | { type: 'image'; title: string; src: string; alt?: string }
+  | { type: 'cta'; title: string; cta: string; note?: string }
+  | { type: 'cross'; title: string; items: { name: string; desc?: string; url?: string }[] };
+
 export const contentLibrary: Record<string, Card[]> = {
   // ===== Общий контент
   stats_overall: [
@@ -13,7 +24,7 @@ export const contentLibrary: Record<string, Card[]> = {
   // ===== Арендаторы
   renter_intro: [
     { type: 'image', title: 'Что важно знать арендатору', src: '/renter-donut.png', alt: '41% не знали, что можно страховать съемное жилье; 37% считали, что это обязанность собственника; 22% не задумывались' },
-    { type: 'list',  title: 'Что можно защитить', items: ['Личные вещи', 'Ответственность перед соседями', 'Поломки техники'] },
+    { type: 'list',  title: 'Что можно защитить', items: ['Личные вещи', 'Ответственность перед соседями', 'Непредсказуемые поломки техники'] },
     { type: 'cta',   title: 'Готовы подобрать тариф?', cta: 'Начать', note: '2–5 минут, без осмотра' },
   ],
 
@@ -25,7 +36,7 @@ export const contentLibrary: Record<string, Card[]> = {
     { type: 'kpi',  title: 'Средняя выплата по РГС', value: '210 000 ₽' },
     { type: 'list', title: 'Покрывается при заливе', items: ['Ремонт отделки и мебели', 'Компенсации соседям', 'Быстрая выплата на карту'] },
     { type: 'cross', title: 'Что ещё может быть полезно', items: [
-      { name: 'Гаджеты', desc: 'Страхование электроники', url: 'https://rgs.online/' },
+      { name: 'Гаджеты', desc: 'Защита электроники', url: 'https://rgs.online/' },
       { name: 'Гражданская ответственность', desc: 'Отдельный полис ГО', url: 'https://rgs.online/' },
     ]},
   ],
@@ -34,37 +45,37 @@ export const contentLibrary: Record<string, Card[]> = {
   fear_fire: [
     { type: 'doughnut', title: 'Доля пожаров в убытках', legend: [
       { name: 'Пожар', value: 25 }, { name: 'Прочие', value: 75 }
-    ], palette: ['#FF6B4A','#FFD0C7'] }, // палитра под оранжево-красный стиль
+    ], palette: ['#FF6B4A','#FFD0C7'] },
     { type: 'kpi',  title: 'Средний убыток без страховки', value: '100–300 тыс. ₽' },
     { type: 'kpi',  title: 'Среднее время выплаты', value: '3–5 дней', note: 'при корректных документах' },
-    { type: 'list', title: 'Что покрывается при пожаре', items: ['Отделка/стены/мебель', 'Причинённый вред соседям', 'Пожаротушение и последствия'] },
+    { type: 'list', title: 'Что покрывается при пожаре', items: ['Отделка/мебель', 'Вред соседям (ГО)', 'Последствия пожаротушения'] },
     { type: 'cross', title: 'Кросс-селл RGS', items: [
       { name: 'RGS.Дом по подписке', desc: 'Для частного дома', url: 'https://rgs.online/house/' },
-      { name: 'Страхование имущества', desc: 'Расширенная защита', url: 'https://rgs.online/' },
+      { name: 'Имущество+', desc: 'Расширенные риски', url: 'https://rgs.online/' },
     ]},
   ],
 
   // ===== Кража
   fear_theft: [
-    { type: 'list', title: 'Кража со взломом: покрывается', items: ['Похищенные вещи', 'Взломанные двери/замки', 'Повреждения при проникновении'] },
+    { type: 'list', title: 'Кража со взломом: покрывается', items: ['Похищенные вещи', 'Повреждение дверей/замков', 'Следы проникновения'] },
     { type: 'kpi',  title: 'Среднее время выплаты', value: '3–5 дней' },
     { type: 'cross', title: 'Рекомендуем также', items: [
       { name: 'Гаджеты+', desc: 'Расширенная защита техники', url: 'https://rgs.online/' },
-      { name: 'Страхование банковских карт', desc: 'Финансовая защита', url: 'https://rgs.online/' },
+      { name: 'Страхование карт', desc: 'Финансовая защита', url: 'https://rgs.online/' },
     ]},
   ],
 
   // ===== ГО (ответственность перед соседями)
   liability_guide: [
-    { type: 'list', title: 'ГО — ущерб соседям', items: ['Залив/пожар у соседей', 'Юр.помощь', 'Часто это самая дорогая часть'] },
+    { type: 'list', title: 'ГО — ущерб соседям', items: ['Залив/пожар у соседей', 'Юр.помощь', 'Часто самая дорогая часть'] },
     { type: 'stat', title: 'Средняя выплата по ГО', value: '210 000 ₽' },
     { type: 'cross', title: 'Связанные продукты', items: [
-      { name: 'ГО отдельно', desc: 'Отдельный полис ГО', url: 'https://rgs.online/' },
+      { name: 'ГО отдельно', desc: 'Самостоятельный полис ГО', url: 'https://rgs.online/' },
       { name: 'Имущество+', desc: 'Расширенные риски', url: 'https://rgs.online/' },
     ]},
   ],
 
-  // ===== Общие слоты, чтобы не потерять существующий функционал
+  // ===== Общие/существующие
   owner_intro: [
     { type: 'stat', title: 'Каждый 10-й обращается за выплатой в первый год', value: '10%+' },
     { type: 'list', title: 'Чаще всего — из-за воды', items: ['затопили соседи','потекла сантехника','прорвало трубу'] }
