@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Image from 'next/image';                 // ⬅️ импорт ДОЛЖЕН быть здесь, наверху
 import ChatPane from '@/components/ChatPane';
 import ContentPane from '@/components/ContentPane';
 
@@ -28,27 +29,31 @@ export default function Page(){
 
       <section className="container" style={{paddingTop:32,paddingBottom:16}}>
         <div className="grid grid-2" style={{alignItems:'center'}}>
+          {/* Левый столбец */}
           <div>
-            <h1 style={{fontSize:40, fontWeight:800, lineHeight:1.1}}>Страхование квартиры <span style={{color:'var(--rgs-primary)'}}>по подписке</span></h1>
-            <p className="text-muted" style={{marginTop:8}}>Оформление онлайн и без осмотра. Гибкие условия. Быстрые выплаты.</p>
+            <h1 style={{fontSize:40, fontWeight:800, lineHeight:1.1}}>
+              Страхование квартиры <span style={{color:'var(--rgs-primary)'}}>по подписке</span>
+            </h1>
+            <p className="text-muted" style={{marginTop:8}}>
+              Оформление онлайн и без осмотра. Гибкие условия. Быстрые выплаты.
+            </p>
             <div style={{display:'flex',gap:12,marginTop:16}}>
               <a href="#chat" className="btn btn-primary">Подключить защиту</a>
               <a href="#chat" className="btn btn-outline">Разобраться за 2 минуты</a>
             </div>
           </div>
-      import Image from "next/image"; // добавь импорт сверху файла, если его нет
 
-<div className="card" style={{overflow:'hidden', borderRadius:16, padding:0}}>
-  <Image
-    src="/flat-hero.png"
-    alt="Квартира — 11 рисков на выбор. Настройте полис и платите, как удобно."
-    width={1200}
-    height={492}
-    priority
-    style={{width:'100%', height:'auto', display:'block'}}
-  />
-</div>
-
+          {/* Правый столбец — баннер */}
+          <div className="card" style={{overflow:'hidden', borderRadius:16, padding:0}}>
+            <Image
+              src="/flat-hero.png"
+              alt="Квартира — 11 рисков на выбор. Настройте полис и платите, как удобно."
+              width={1200}
+              height={492}
+              priority
+              style={{width:'100%', height:'auto', display:'block'}}
+            />
+          </div>
         </div>
       </section>
 
