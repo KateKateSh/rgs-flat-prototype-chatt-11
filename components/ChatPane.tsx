@@ -1,125 +1,159 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { flow, type Node, type Reply } from '@/lib/dialogFlow';
+import { purchaseFlow } from '@/lib/purchaseFlow'; // ← сценарий, сгенерированный из Excel
+type ScriptLine = { who: 'bot' | 'user'; text: string };
 
-type Msg = { who:'bot'|'user'; text:string };
+type Msg = { who: 'bot' | 'user'; text: string };
 
-export default function ChatPane({ onIntent }:{ onIntent:(i:string)=>void }){
+export default function ChatPane({ onIntent }:{ onIntent:(i:string)=>void }) {
   const [thread, setThread] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
-  const [current, setCurrent] = useState<Node|undefined>();
-  const [mode, setMode] = useState<'free'|'demo'>('free'); // новый режим
+  const [scriptMode, setScriptMode] = useState(false);
+  const [scriptIdx, setScriptIdx] = useState(0);
+  const abortRef = useRef<{stop: boolean}>({ stop: false });
   const viewRef = useRef<HTMLDivElement>(null);
 
-  function add(text:string, who:'bot'|'user'='bot'){ setThread(t=>[...t,{who,text}]); }
-  function scroll(){ viewRef.current?.scrollTo({top:99999, behavior:'smooth'}); }
+  function add(text: string, who: 'bot' | 'user' = 'bot') {
+    setThread(t => [...t, { who, text }]);
+  }
+  function scroll() {
+    viewRef.current?.scrollTo({ top: 99999, behavior: 'smooth' });
+  }
 
-  // Проигрывает бот-сообщения узла последовательно
-  async function playBot(node: Node){
-    const parts = Array.isArray(node.bot) ? node.bot : [node.bot];
-    for(const p of parts){
-      await new Promise(r=>setTimeout(r, 400));
-      add(p,'bot'); scroll();
+  // ——— Автопроигрывание сценария «Оформление» из Excel ———
+  async function playPurchaseScript(lines: ScriptLine[]) {
+    setScriptMode(true);
+    setThread([]);            // очищаем чат
+    setScriptIdx(0);
+    abortRef.current.stop = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (abortRef.current.stop) break;
+      const m = lines[i];
+      // Небольшая задержка между фразами для реалистичности
+      await new Promise(r => setTimeout(r, 420));
+      add(m.text, m.who);
+      setScriptIdx(i + 1);
+      scroll();
+
+      // (Опционально) подстраиваем правую колонку по ключевым словам
+      const t = m.text.toLowerCase();
+      if (m.who === 'bot') {
+        if (t.includes('затоп') || t.includes('залив') || t.includes('вода')) onIntent('fear_flood');
+        else if (t.includes('пожар')) onIntent('fear_fire');
+        else if (t.includes('краж') || t.includes('взлом')) onIntent('fear_theft');
+        else if (t.includes('сосед') || t.includes('го') || t.includes('ответствен')) onIntent('liability');
+        else if (t.includes('пример') || t.includes('выплат')) onIntent('cases');
+        else if (t.includes('шаг') || t.includes('оформ')) onIntent('steps');
+      }
     }
-    if(node.intent) onIntent(node.intent);
+
+    setScriptMode(false);
+    // По завершении сценария переключаемся в режим реального оформления
+    onIntent('start_purchase');
   }
 
-  function goto(id: string){
-    const n = flow[id]; setCurrent(n);
-    if(!n) return;
-    playBot(n);
-    // если это handoff в оформление — дергаем intent start_purchase
-    if(n.intent === 'start_purchase') onIntent('start_purchase');
+  function stopScript() {
+    abortRef.current.stop = true;
+    setScriptMode(false);
   }
 
-  // Старт демо
-  function startDemo(){
-    setMode('demo');
-    setThread([]); // очистим
-    goto('start');
-  }
-
-  // Пользователь выбирает быстрый ответ (в демо)
-  function pick(reply: Reply){
-    add(reply.label,'user'); scroll();
-    if(reply.intent) onIntent(reply.intent);
-    goto(reply.next);
-  }
-
-  // Обычная отправка (режим free)
-  async function send(text:string){
-    add(text,'user'); setInput('');
-    const res = await fetch('/api/chat', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ messages: [ {role:'user', content:text} ] })
-    });
-    const data = await res.json().catch(()=>({message:'Не удалось разобрать ответ', intent:'faq_common'}));
-    add(data.message||'');
-    if(data.intent) onIntent(data.intent);
+  // ——— Обычная отправка в «без LLM» режим (наш /api/chat возвращает intent по правилам) ———
+  async function send(text: string) {
+    add(text, 'user');
+    setInput('');
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: text }] })
+      });
+      const data = await res.json().catch(() => ({ message: 'Не удалось разобрать ответ', intent: 'faq_common' }));
+      add(data.message || '');
+      if (data.intent) onIntent(data.intent);
+    } catch {
+      add('Не получилось ответить. Попробуйте ещё раз.', 'bot');
+    }
     scroll();
   }
 
-  useEffect(()=>{ add('Я — виртуальный ассистент РГС. Подберу защиту и покажу примеры.'); },[]);
-  useEffect(()=>{ scroll(); },[thread.length]);
+  useEffect(() => {
+    // Приветствие
+    add('Я — виртуальный ассистент РГС. Подберу защиту и покажу примеры.');
+  }, []);
+  useEffect(() => { scroll(); }, [thread.length]);
 
-  const chips = [
-    {label:'Демо-диалог', action: startDemo},
-    {label:'Оформить страховку', action: ()=>onIntent('start_purchase')},
-    {label:'У меня своя квартира', action: ()=>onIntent('owner')},
-    {label:'Я снимаю жильё', action: ()=>onIntent('renter')},
-    {label:'Залив', action: ()=>onIntent('fear_flood')},
-    {label:'Пожар', action: ()=>onIntent('fear_fire')},
-    {label:'Кража', action: ()=>onIntent('fear_theft')},
-    {label:'Ответственность (ГО)', action: ()=>onIntent('liability')},
-    {label:'Статистика', action: ()=>onIntent('stats_overall')},
-    {label:'Примеры выплат', action: ()=>onIntent('cases')},
-    {label:'Шаги оформления', action: ()=>onIntent('steps')},
+  // Быстрые чипы
+  const chips: { label: string; onClick: () => void }[] = [
+    {
+      label: 'Оформить страховку',
+      onClick: () => {
+        add('Оформить страховку', 'user');
+        // запускаем сценарий из Excel:
+        playPurchaseScript(purchaseFlow);
+      }
+    },
+    { label: 'У меня своя квартира', onClick: () => { add('У меня своя квартира', 'user'); onIntent('owner'); } },
+    { label: 'Я снимаю жильё', onClick: () => { add('Я снимаю жильё', 'user'); onIntent('renter'); } },
+    { label: 'Залив', onClick: () => { add('Залив', 'user'); onIntent('fear_flood'); } },
+    { label: 'Пожар', onClick: () => { add('Пожар', 'user'); onIntent('fear_fire'); } },
+    { label: 'Кража', onClick: () => { add('Кража', 'user'); onIntent('fear_theft'); } },
+    { label: 'Ответственность (ГО)', onClick: () => { add('Ответственность (ГО)', 'user'); onIntent('liability'); } },
+    { label: 'Статистика', onClick: () => { add('Статистика', 'user'); onIntent('stats_overall'); } },
+    { label: 'Примеры выплат', onClick: () => { add('Примеры выплат', 'user'); onIntent('cases'); } },
+    { label: 'Шаги оформления', onClick: () => { add('Шаги оформления', 'user'); onIntent('steps'); } },
   ];
 
-  // Кнопки-ответы демо для текущего узла
-  const replies = mode==='demo' && current?.replies ? current.replies : [];
+  const progress = scriptMode && purchaseFlow.length > 0
+    ? Math.round((scriptIdx / purchaseFlow.length) * 100)
+    : 0;
 
   return (
     <div className="card">
-      <div style={{display:'flex',alignItems:'center',gap:8, marginBottom:12}}>
-        <div style={{width:32,height:32,borderRadius:16, background:'var(--rgs-primary)'}}/>
-        <div style={{fontWeight:600}}>Виртуальный ассистент РГС</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 16, background: 'var(--rgs-primary)' }} />
+        <div style={{ fontWeight: 600 }}>Виртуальный ассистент РГС</div>
       </div>
 
-      <div ref={viewRef} style={{height:440, overflowY:'auto'}}>
-        {thread.map((m,i)=> (
-          <div key={i} style={{display:'flex', justifyContent: m.who==='user'?'flex-end':'flex-start', padding:'4px 0'}}>
-            <div className={m.who==='user'?'bubble bubble-user':'bubble bubble-bot'}>{m.text}</div>
+      {/* Статус-бар демо-сценария */}
+      {scriptMode && (
+        <div className="text-muted" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <div>Воспроизвожу сценарий оформления… {scriptIdx}/{purchaseFlow.length}</div>
+          <div style={{ flex: 1, height: 6, background: '#e5e7eb', borderRadius: 999 }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--rgs-primary)', borderRadius: 999 }} />
+          </div>
+          <button className="chip" onClick={stopScript}>Стоп</button>
+        </div>
+      )}
+
+      {/* Лента сообщений */}
+      <div ref={viewRef} style={{ height: 440, overflowY: 'auto' }}>
+        {thread.map((m, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: m.who === 'user' ? 'flex-end' : 'flex-start', padding: '4px 0' }}>
+            <div className={m.who === 'user' ? 'bubble bubble-user' : 'bubble bubble-bot'}>{m.text}</div>
           </div>
         ))}
       </div>
 
-      {/* Быстрые ответы демо-режима */}
-      {replies.length>0 && (
-        <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:12}}>
-          {replies.map((r,i)=>(
-            <button key={i} className="chip" onClick={()=>pick(r)}>{r.label}</button>
-          ))}
-        </div>
-      )}
-
-      {/* Чипы верхнего уровня */}
-      <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:12}}>
-        {chips.map((c,i)=>(
-          <button key={i} className="chip" onClick={()=>{
-            add(c.label,'user');
-            c.action();
-          }}>{c.label}</button>
+      {/* Быстрые чипы */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+        {chips.map((c, i) => (
+          <button key={i} className="chip" onClick={c.onClick}>{c.label}</button>
         ))}
       </div>
 
-      {/* Поле ввода скрываем во время демо, чтобы не мешало */}
-      {mode==='free' && (
-        <div style={{display:'flex', gap:8, marginTop:12}}>
-          <input value={input} onChange={e=>setInput(e.target.value)}
-                 onKeyDown={e=> e.key==='Enter' && input.trim() && send(input)}
-                 className="chip" style={{flex:1}} placeholder="Введите сообщение..." />
-          <button onClick={()=> input.trim() && send(input)} className="btn btn-primary">Отправить</button>
+      {/* Поле ввода скрываем, когда идёт автосценарий */}
+      {!scriptMode && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && input.trim() && send(input)}
+            className="chip"
+            style={{ flex: 1 }}
+            placeholder="Введите сообщение..."
+          />
+          <button onClick={() => input.trim() && send(input)} className="btn btn-primary">Отправить</button>
         </div>
       )}
     </div>
