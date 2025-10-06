@@ -36,12 +36,19 @@ export default function Page(){
               <a href="#chat" className="btn btn-outline">Разобраться за 2 минуты</a>
             </div>
           </div>
-          <div className="card" style={{height:220, display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontSize:56}}>🏠</div>
-              <div className="text-muted" style={{fontSize:12}}>Визуальная заглушка</div>
-            </div>
-          </div>
+      import Image from "next/image"; // добавь импорт сверху файла, если его нет
+
+<div className="card" style={{overflow:'hidden', borderRadius:16, padding:0}}>
+  <Image
+    src="/flat-hero.png"
+    alt="Квартира — 11 рисков на выбор. Настройте полис и платите, как удобно."
+    width={1200}
+    height={492}
+    priority
+    style={{width:'100%', height:'auto', display:'block'}}
+  />
+</div>
+
         </div>
       </section>
 
